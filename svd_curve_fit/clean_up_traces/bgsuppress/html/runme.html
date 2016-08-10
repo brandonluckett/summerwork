@@ -1,0 +1,167 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>runme</title><meta name="generator" content="MATLAB 7.12"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-03-26"><meta name="DC.source" content="runme.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Load data</a></li><li><a href="#3">LS ARMA for multi echo data</a></li><li><a href="#5">Background suppression using L1 edge detection.</a></li><li><a href="#6">k-means classification</a></li></ul></div><h2>Introduction<a name="1"></a></h2><pre class="codeinput"><span class="comment">% This examples illustrates how to use the single peak CSI estimation and</span>
+<span class="comment">% background suppression algorithm.</span>
+</pre><h2>Load data<a name="2"></a></h2><pre class="codeinput">load <span class="string">/FUS4/data2/mfgre/Prelimary_PreBAT/051111_mfgre_prostate/raw_data.mat</span>
+</pre><h2>LS ARMA for multi echo data<a name="3"></a></h2><p>If more than one echo is collected a signal model with one peak can be used to estimate the phase. In this case dat2 has size Ny x Nx x Ne x Nz.</p><pre class="codeinput">dat2=dat2(:,:,:,1);
+size(dat2)
+</pre><pre class="codeoutput">
+ans =
+
+   256   256    16
+
+</pre><p>Compute 1 peak model. If only the input data is passed to the function it assumes echo spacing of 1/2/pi and B0=1, which results in the phase of the peak.</p><pre class="codeinput">[ppm,t2s,a,b] = CSI_LS1(dat2);
+
+<span class="comment">% The ppm map and t2-star map is of size Ny x Nx x Nz.</span>
+<span class="comment">% We have to make sure that there is no "not a number" in the results</span>
+ppm(isnan(ppm))=0;
+t2s(isnan(t2s))=0;
+
+figure,
+imagesc(ppm(:,:,1)); colormap(gray); axis <span class="string">equal</span>; axis <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="runme_01.png" alt=""> <h2>Background suppression using L1 edge detection.<a name="5"></a></h2><p>We apply the background suppression to complex data with wrappped phase. Note ppm should contain angles, and not actual ppms, otherwise the phase unwrapping will fail.</p><pre class="codeinput"><span class="comment">% 1. compute weighting matrix for phase data. Here we use the mean of the</span>
+<span class="comment">% magnitudes of the original data</span>
+w=squeeze(mean(abs(dat2),3));
+
+<span class="comment">% 2. remove background</span>
+alpha = bgsup3(ppm,w.^2,struct(<span class="string">'nth'</span>,1e-4));
+
+<span class="comment">% compute a mask for displaying and classification (5% of max amplitude)</span>
+mask=w&gt;0.05*max(w(:));
+figure,
+imagesc(mask(:,:,1).*alpha(:,:,1)); colormap(gray); axis <span class="string">equal</span>; axis <span class="string">off</span>
+</pre><pre class="codeoutput">edge detection y-dir
+..................................................
+edge detection x-dir
+..................................................
+edge detection z-dir
+.
+Laplace eq solution:  iter = 83 (eps = 9.934597e-03) 
+</pre><img vspace="5" hspace="5" src="runme_02.png" alt=""> <h2>k-means classification<a name="6"></a></h2><p>run a quick classification using k-means</p><pre class="codeinput">labels=zeros(size(alpha));
+idx=kmeans(alpha(mask==1),2);
+labels(mask==1)=idx;
+
+figure,
+imagesc(labels(:,:,1)); colormap(gray); axis <span class="string">equal</span>; axis <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="runme_03.png" alt=""> <p class="footer"><br>
+      Published with MATLAB&reg; 7.12<br></p></div><!--
+##### SOURCE BEGIN #####
+   %% Introduction
+% This examples illustrates how to use the single peak CSI estimation and
+% background suppression algorithm.
+
+%% Load data
+load /FUS4/data2/mfgre/Prelimary_PreBAT/051111_mfgre_prostate/raw_data.mat
+
+%% LS ARMA for multi echo data
+% If more than one echo is collected a signal model with one peak 
+% can be used to estimate the phase. In this case dat2 has 
+% size Ny x Nx x Ne x Nz.
+dat2=dat2(:,:,:,1);
+size(dat2)
+
+%%
+% Compute 1 peak model. If only the input data is passed to the function it
+% assumes echo spacing of 1/2/pi and B0=1, which results in the phase of
+% the peak.
+[ppm,t2s,a,b] = CSI_LS1(dat2);
+
+% The ppm map and t2-star map is of size Ny x Nx x Nz.
+% We have to make sure that there is no "not a number" in the results
+ppm(isnan(ppm))=0; 
+t2s(isnan(t2s))=0; 
+
+figure,
+imagesc(ppm(:,:,1)); colormap(gray); axis equal; axis off 
+
+%% Background suppression using L1 edge detection.
+% We apply the background suppression to complex data 
+% with wrappped phase.
+% Note ppm should contain angles, and not actual ppms, otherwise the phase
+% unwrapping will fail.
+
+% 1. compute weighting matrix for phase data. Here we use the mean of the
+% magnitudes of the original data
+w=squeeze(mean(abs(dat2),3));
+
+% 2. remove background 
+alpha = bgsup3(ppm,w.^2,struct('nth',1e-4));
+
+% compute a mask for displaying and classification (5% of max amplitude)
+mask=w>0.05*max(w(:));
+figure,
+imagesc(mask(:,:,1).*alpha(:,:,1)); colormap(gray); axis equal; axis off 
+
+%% k-means classification
+% run a quick classification using k-means
+labels=zeros(size(alpha));
+idx=kmeans(alpha(mask==1),2);
+labels(mask==1)=idx;
+
+figure, 
+imagesc(labels(:,:,1)); colormap(gray); axis equal; axis off 
+
+##### SOURCE END #####
+--></body></html>

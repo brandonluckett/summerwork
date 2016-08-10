@@ -1,0 +1,27 @@
+Background supression using L1 edge detection.
+
+Usage:
+==============================
+Assuming complex data with wrappped phase in a matlab matrix dat2 of size Ny x Nx x Nt.
+
+alpha = bgsup3(angle(dat2),abs(dat2).^m,struct('nth',1e-4));
+
+- m is 1 or 2 and is a data weighting. Theoretically m=2 should be used, practically m=1 is often better.
+- the parameter nth coverns how much backgound is removed. Larger nth removes more backgound but will also remove more of the signal
+- Nt can be 1, however there is an abitrary additive constant offset in each solution, resulting in artefacts between slices.
+
+
+LS ARMA for multi echo data
+============================
+If more than one echo is collected a signal model with one peak can be used to estimate the phase.
+In this case dat2 has size Ny x Nx x Ne x Nt.
+
+% results in a ppm map of size Ny x Nx x Nt and a t2-star map of same size
+[ppm,t2s,a,b] = CSI_LS1(dat2);
+ppm(isnan(ppm))=0; % make sure there is no "not a number" in the results
+ 
+% apply phase unwrapping and bg suppression:
+w=squeeze(mean(abs(dat2),3)); % mean of mag over all echos
+alpha = bgsup3(ppm,w.^m,struct('nth',1e-4));
+
+

@@ -1,0 +1,11 @@
+close all;
+hold on;
+clear all;
+x;
+z;
+scatter(x,z,100,'filled');
+xlim([-4 4]);
+ylim([-3 3]);
+xlabel('X-Position(cm)');
+ylabel('Z-Position(cm)');
+title('Figure 1.2 Recon');
